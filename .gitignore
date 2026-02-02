@@ -41,3 +41,4 @@ codegen/
  
 resources/ 
 *.prj
+matlab_ws.prj
