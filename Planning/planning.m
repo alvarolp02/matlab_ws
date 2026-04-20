@@ -24,14 +24,18 @@ trackLimRight = middle-n.*twR;
 plot(trackLimLeft(:,2),trackLimLeft(:,1),".b")
 plot(trackLimRight(:,2),trackLimRight(:,1),".y")
 
-deltaX = trackLimLeft(:,1)-trackLimRight(:,1);
-deltaY = trackLimLeft(:,2)-trackLimRight(:,2);
 
-alphaMinDistTL = minDistTrajTL(trackLimLeft, trackLimRight);
+% MIN DIST BASED ON TRACK LIMITS
+% deltaX = trackLimLeft(:,1)-trackLimRight(:,1);
+% deltaY = trackLimLeft(:,2)-trackLimRight(:,2);
+% alphaMinDistTL = minDistTrajTL(trackLimLeft, trackLimRight);
+% plot(trackLimRight(:,2) + alphaMinDistTL.*deltaY,trackLimRight(:,1) + alphaMinDistTL.*deltaX, ".r")
 
-% Plot min dist raceline
-racelineX = trackLimRight(:,1) + alphaMinDistTL.*deltaX;
-racelineY = trackLimRight(:,2) + alphaMinDistTL.*deltaY;
-plot(racelineY,racelineX, ".r")
 
+% MIN DIST
+ref = middle;
+n = normals(ref);
+[twL, twR] = trackWidths(left, right, ref, 0.5, "cone");
+alphaMinDist = minDistTraj(ref, n, twL, twR);
+plot(ref(:,2) + alphaMinDist.*n(:,2),ref(:,1) + alphaMinDist.*n(:,1), ".r")
 

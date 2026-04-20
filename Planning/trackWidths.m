@@ -1,5 +1,10 @@
 function [twL, twR] = trackWidths(left, right, reference, minDist, boundaryType)
 %TRACKWIDTHS Generate the trackWidths considering minDist to boundaries
+% left: left boundary cone positions
+% right: right boundary cone positions
+% reference: trajectory used as reference for tw generation
+% minDist: minimum distance to cones
+% boundaryType: "cone" or "border", decide which to avoid
 
 if boundaryType=="border"
     factor = 20; % In-between points per segment

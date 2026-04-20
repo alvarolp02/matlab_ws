@@ -2,9 +2,7 @@ function [middle] = middleLine(left, right, interpDist)
 %MIDDLELINE Compute smooth middleLine given left and right boundaries.
 % left: left boundary cone positions
 % right: right boundary cone positions
-% minDist: minimum distance to cones
 % interpDist: resolution of resulting middleline
-% boundaryType: "cone" or "border", decide which to avoid
 
 % For efficiency, use KD-tree via knnsearch (Statistics and ML toolbox)
 idx = knnsearch(right(:,1:2), left(:,1:2));
