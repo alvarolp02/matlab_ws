@@ -11,7 +11,8 @@ plot(left(:,2), left(:,1), ".b", MarkerSize=20)
 plot(right(:,2), right(:,1), ".y", MarkerSize=20)
 
 % Compute middleline and track widths
-[middle, twL, twR] = middleLine(left,right,0.5,0.8,"border");
+middle = middleLine(left,right,0.8);
+[twL, twR] = trackWidths(left, right, middle, 0.5, "cone");
 plot(middle(:,2),middle(:,1),".g")
 
 % Compute normals
@@ -26,11 +27,11 @@ plot(trackLimRight(:,2),trackLimRight(:,1),".y")
 deltaX = trackLimLeft(:,1)-trackLimRight(:,1);
 deltaY = trackLimLeft(:,2)-trackLimRight(:,2);
 
-alphaMinDist = minDistTraj(trackLimLeft, trackLimRight);
+alphaMinDistTL = minDistTrajTL(trackLimLeft, trackLimRight);
 
 % Plot min dist raceline
-racelineX = trackLimRight(:,1) + alphaMinDist.*deltaX;
-racelineY = trackLimRight(:,2) + alphaMinDist.*deltaY;
+racelineX = trackLimRight(:,1) + alphaMinDistTL.*deltaX;
+racelineY = trackLimRight(:,2) + alphaMinDistTL.*deltaY;
 plot(racelineY,racelineX, ".r")
 
 

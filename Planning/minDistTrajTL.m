@@ -1,6 +1,6 @@
-function [alphaOpt] = minDistTraj(trackLimLeft,trackLimRight)
+function [alphaOpt] = minDistTrajTL(trackLimLeft,trackLimRight)
 %MINDISTTRAJ Compute min. distance trajectory based on Race Driver Model
-%paper (F. Braghin)
+%paper (F. Braghin), using track limits as reference
 % trackLimLeft: left limit for trajectory
 % trackLimRight: right limit for trajectory
 % alphaOpt: computed alpha for constructing the trajectory as 
