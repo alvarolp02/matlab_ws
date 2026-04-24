@@ -21,7 +21,7 @@ D(end,1)=1;
 xref = ref(:,1);
 yref = ref(:,2);
 
-H = 2.*(Nx.'*(D.'*D)*Nx + Ny.'*(D.'*D)*Ny);
+H = (Nx.'*(D.'*D)*Nx + Ny.'*(D.'*D)*Ny);
 
 B = 2.*(xref.'*(D.'*D)*Nx + yref.'*(D.'*D)*Ny);
 

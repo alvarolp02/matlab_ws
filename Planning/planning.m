@@ -17,8 +17,6 @@ plot(middle(:,2),middle(:,1),".g")
 
 % Compute normals
 n = normals(middle);
-middle(1:5,:)
-middle(end-5:end,:)
 
 % % Visualize track limits from normals and trackwidths
 trackLimLeft = middle+n.*twL;
@@ -43,18 +41,20 @@ plot(trackLimRight(:,2),trackLimRight(:,1),".y")
 
 % MIN CURVATURE
 ref = middle;
-n = normals(ref);
-[twL, twR] = trackWidths(left, right, ref, 0.5, "cone");
-alphaMinCurv = minCurvTraj(ref, n, twL, twR);
 
-optN = 0;
-for i=1:optN
-    ref = ref + alphaMinCurv.*n;
+nIt = 5;
+distances=zeros(nIt,1);
+meanCurvatures=zeros(nIt,1);
+for i=1:nIt
+    n = normals(ref);
     [twL, twR] = trackWidths(left, right, ref, 0.5, "cone");
     alphaMinCurv = minCurvTraj(ref, n, twL, twR);
+    ref = ref + alphaMinCurv.*n;
+    [distances(i),meanCurvatures(i)]=evaluate(ref);
 end
+racingLine=ref;
 
-plot(ref(:,2) + alphaMinCurv.*n(:,2),ref(:,1) + alphaMinCurv.*n(:,1), ".r")
+plot(racingLine(:,2), racingLine(:,1), ".r")
 
 % Visualize tracklimits
 trackLimLeft = ref + twL.*n;
@@ -62,3 +62,5 @@ trackLimRight = ref - twR.*n;
 plot(trackLimLeft(:,2),trackLimLeft(:,1))
 plot(trackLimRight(:,2),trackLimRight(:,1))
 
+distances
+meanCurvatures
