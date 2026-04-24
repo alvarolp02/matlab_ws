@@ -17,6 +17,8 @@ plot(middle(:,2),middle(:,1),".g")
 
 % Compute normals
 n = normals(middle);
+middle(1:5,:)
+middle(end-5:end,:)
 
 % % Visualize track limits from normals and trackwidths
 trackLimLeft = middle+n.*twL;
@@ -45,7 +47,7 @@ n = normals(ref);
 [twL, twR] = trackWidths(left, right, ref, 0.5, "cone");
 alphaMinCurv = minCurvTraj(ref, n, twL, twR);
 
-optN = 5;
+optN = 0;
 for i=1:optN
     ref = ref + alphaMinCurv.*n;
     [twL, twR] = trackWidths(left, right, ref, 0.5, "cone");

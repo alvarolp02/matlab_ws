@@ -15,11 +15,14 @@ Nx = diag(n(:,1));
 Ny = diag(n(:,2));
 
 D = -2.*eye(N,N) + diag(ones(1,N-1),1) + diag(ones(1,N-1),-1);
+D(1,end)=1;
+D(end,1)=1;
 
 xref = ref(:,1);
 yref = ref(:,2);
 
 H = 2.*(Nx.'*(D.'*D)*Nx + Ny.'*(D.'*D)*Ny);
+
 B = 2.*(xref.'*(D.'*D)*Nx + yref.'*(D.'*D)*Ny);
 
 % Convert to sparse (OSQP prefers sparse matrices)
@@ -34,7 +37,6 @@ u = ones(N,1).*twL;
 
 % Setup solver
 % Solve min in x : (1/2)x'Px + q'x 
-%       s.t. l <= Ax <= u
 prob = osqp;
 prob.setup(P, q, A, l, u);
 

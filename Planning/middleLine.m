@@ -26,5 +26,6 @@ xs = interp1(t, middle(:,1), linspace(0,1,nSamples), 'pchip');
 ys = interp1(t, middle(:,2), linspace(0,1,nSamples), 'pchip');
 
 middle = [xs(:),ys(:)];
+middle = middle(1:end-1,:);
 
 end
