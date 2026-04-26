@@ -42,7 +42,7 @@ plot(trackLimRight(:,2),trackLimRight(:,1),".y")
 % MIN CURVATURE
 ref = middle;
 
-nIt = 5;
+nIt = 1;
 distances=zeros(nIt,1);
 meanCurvatures=zeros(nIt,1);
 for i=1:nIt
@@ -62,5 +62,7 @@ trackLimRight = ref - twR.*n;
 plot(trackLimLeft(:,2),trackLimLeft(:,1))
 plot(trackLimRight(:,2),trackLimRight(:,1))
 
-distances
-meanCurvatures
+distances;
+meanCurvatures;
+
+trajectory = velProfile(racingLine)
