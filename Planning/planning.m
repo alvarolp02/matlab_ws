@@ -11,7 +11,7 @@ plot(left(:,2), left(:,1), ".b", MarkerSize=20)
 plot(right(:,2), right(:,1), ".y", MarkerSize=20)
 
 % Compute middleline and track widths
-middle = middleLine(left,right,0.2);
+middle = middleLine(left,right,0.5);
 [twL, twR] = trackWidths(left, right, middle, 0.5, "cone");
 plot(middle(:,2),middle(:,1),".g")
 
@@ -42,7 +42,7 @@ plot(trackLimRight(:,2),trackLimRight(:,1),".y")
 % MIN CURVATURE
 ref = middle;
 
-nIt = 1;
+nIt = 5;
 distances=zeros(nIt,1);
 meanCurvatures=zeros(nIt,1);
 for i=1:nIt
@@ -50,7 +50,7 @@ for i=1:nIt
     [twL, twR] = trackWidths(left, right, ref, 0.5, "cone");
     alphaMinCurv = minCurvTraj(ref, n, twL, twR);
     ref = ref + alphaMinCurv.*n;
-    [distances(i),meanCurvatures(i)]=evaluate(ref);
+    [distances(i),meanCurvatures(i)]=evaluatePath(ref);
 end
 racingLine=ref;
 
@@ -62,7 +62,11 @@ trackLimRight = ref - twR.*n;
 plot(trackLimLeft(:,2),trackLimLeft(:,1))
 plot(trackLimRight(:,2),trackLimRight(:,1))
 
-distances;
-meanCurvatures;
+distances
+meanCurvatures
 
-trajectory = velProfile(racingLine)
+trajectory = velProfile(racingLine);
+
+plot3(trajectory(:,2),trajectory(:,1),2.*trajectory(:,5))
+
+[distance, meanCurv, time] = evaluateTraj(trajectory)
