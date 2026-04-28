@@ -65,9 +65,13 @@ plot(trackLimRight(:,2),trackLimRight(:,1))
 distances
 meanCurvatures
 
+% smooth the resulting racingline
+racingLine = splineInterpolation(racingLine, 0.01);
+
 trajectory = velProfile(racingLine);
 
 % fsg24_traj = csvread("trackBoundaries\FSG24_traj.csv",1);
+% mean(abs(fsg24_traj(:,7)))
 % trajectory = velProfile(fsg24_traj(:,1:2));
 
 plot3(trajectory(:,2),trajectory(:,1),2.*trajectory(:,5))
