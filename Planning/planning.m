@@ -67,6 +67,10 @@ meanCurvatures
 
 trajectory = velProfile(racingLine);
 
+% fsg24_traj = csvread("trackBoundaries\FSG24_traj.csv",1);
+% trajectory = velProfile(fsg24_traj(:,1:2));
+
 plot3(trajectory(:,2),trajectory(:,1),2.*trajectory(:,5))
+% plot3(fsg24_traj(:,2),fsg24_traj(:,1),2.*fsg24_traj(:,5))
 
 [distance, meanCurv, time] = evaluateTraj(trajectory)

@@ -21,6 +21,10 @@ ddx=gradient(dx);
 ddy=gradient(dy);
 k=(dx.*ddy - dy.*ddx)./((dx.^2+dy.^2).^(3/2));
 
+
+
+
+
 cL = 4.0;
 cD = 1.93;
 ro = 1.2;
@@ -33,13 +37,40 @@ P_thr = 80.0;
 P_br = 60.0;
 ax_th_scale_factor = 0.55; % scaling factor for throttle acceleration
 ax_br_scale_factor = 1.0;  % scaling factor for braking acceleration
-
-
-
 muX = 1.3291*0.6;
 muY = 1.5863*0.55;
-
 vMax = 25.0;
+
+% Subfunction: compute forward-acceleration limit
+function ax = ax_throttle_limit(k,v)
+    ay = abs(k) * v^2;
+    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(v^2) + 0.038*cL*v + 0.958*muY*g;
+    axMaxGGV = 0;
+    if abs(ay) < ayMax
+        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL - cD)*1.51*(v^2);
+        axMaxGGV = axMax * sqrt(1 - (ay/ayMax)^2);
+    end
+    axMaxController = maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)) / m;
+    axMaxMotors = ax_th_scale_factor * ((1/v) * (P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*v^2));
+    ax = min(min(axMaxGGV, axMaxMotors), axMaxController);
+end
+
+% Subfunction: compute backwards-acceleration limit
+function ax = ax_brake_limit(k,v)
+    ay = abs(k) * v^2;
+    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(v^2) + 0.038*cL*v + 0.958*muY*g;
+    axMaxGGV = 0;
+    if abs(ay) < ayMax
+        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL - cD)*1.51*(v^2);
+        axMaxGGV = - axMax * sqrt(1 - (ay/ayMax)^2);
+    end
+    axMaxController = - maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)) / m;
+    axMaxMotors = - ax_th_scale_factor * ((1/v) * (P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*v^2));
+    ax = - max(max(axMaxGGV, axMaxMotors), axMaxController);
+end
+
+
+
 
 vGrip = zeros(N,1);
 for i=1:N
@@ -64,7 +95,7 @@ for i=1:N
     else
         vGrip(i) = v2;
     end
-
+    vGrip(i) = min(vGrip(i),vMax);
 end
 
 
@@ -75,18 +106,7 @@ ds = segmentLengths;
 
 % Forwards loop. First iteration. Calculate speed profile and limit by grip
 for i = 2:N
-    % Compute ax given curvature and velocity at this point
-    ay=k(i-1)*vel(i-1)^2;
-    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(vel(i-1)^2) + 0.038*cL*vel(i-1)+0.958*muY*g;
-    axMaxGGV = 0;
-    if abs(ay)<ayMax
-        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL-cD)*1.51*(vel(i-1)^2);
-        axMaxGGV = axMax*sqrt(1-(ay/ayMax)^2);
-    end
-    axMaxController = maxAccFactorController*(g + 0.5*ro*A*cL*(vel(i-1)^2))/m;
-    axMaxMotors = ax_th_scale_factor*((1/vel(i-1))*(P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*vel(i-1)^2));
-    ax = min(min(axMaxGGV, axMaxMotors),axMaxController);
-
+    ax = ax_throttle_limit(k(i-1),vel(i-1));
     vel(i) = min(sqrt(vel(i-1)^2 + 2*ax*ds(i)), vGrip(i));
 end
 
@@ -95,36 +115,14 @@ vel(1) = vel(m);
 
 % Forwards loop. Second iteration
 for i = 2:N
-    % Compute ax given curvature and velocity at this point
-    ay=k(i-1)*vel(i-1)^2;
-    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(vel(i-1)^2) + 0.038*cL*vel(i-1)+0.958*muY*g;
-    axMaxGGV = 0;
-    if abs(ay)<ayMax
-        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL-cD)*1.51*(vel(i-1)^2);
-        axMaxGGV = axMax*sqrt(1-(ay/ayMax)^2);
-    end
-    axMaxController = maxAccFactorController*(g + 0.5*ro*A*cL*(vel(i-1)^2))/m;
-    axMaxMotors = ax_th_scale_factor*((1/vel(i-1))*(P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*vel(i-1)^2));
-    ax = min(min(axMaxGGV, axMaxMotors),axMaxController);
-
+    ax = ax_throttle_limit(k(i-1),vel(i-1));
     vel(i) = min(sqrt(vel(i-1)^2 + 2*ax*ds(i)), vGrip(i));
 end
 
 % Backwards loop. First iteration. Limit speed by max braking
 for j = N:-1:2
-    % Compute ax given curvature and velocity at this point
-    ay=k(j)*vel(j)^2;
-    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(vel(j)^2) + 0.038*cL*vel(j)+0.958*muY*g;
-    axMaxGGV = 0;
-    if abs(ay)<ayMax
-        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL-cD)*1.51*(vel(j)^2);
-        axMaxGGV = - axMax*sqrt(1-(ay/ayMax)^2);
-    end
-    axMaxController = - maxAccFactorController*(g + 0.5*ro*A*cL*(vel(i-1)^2))/m;
-    axMaxMotors = - ax_br_scale_factor*((1/vel(i-1))*(P_br*1000*eta/m) - 0.5*(ro*A/m)*(cD*vel(i-1)^2));
-    ax = - max(max(axMaxGGV, axMaxMotors),axMaxController);
-
-    vel(j-1) = min(vel(j-1), sqrt(vel(j)^2 + 2*ax*ds(j-1)));
+    ax = ax_brake_limit(k(j),vel(j));
+    vel(j-1) = min(sqrt(vel(j)^2 + 2*ax*ds(j-1)), vel(j-1));
 end
 
 % Close loop
@@ -132,20 +130,10 @@ vel(m) = vel(1);
 
 % Backwards loop. Second iteration
 for j = N:-1:2
-    % Compute ax given curvature and velocity at this point
-    ay=k(j)*vel(j)^2;
-    ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(vel(j)^2) + 0.038*cL*vel(j)+0.958*muY*g;
-    axMaxGGV = 0;
-    if abs(ay)<ayMax
-        axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL-cD)*1.51*(vel(j)^2);
-        axMaxGGV = - axMax*sqrt(1-(ay/ayMax)^2);
-    end
-    axMaxController = - maxAccFactorController*(g + 0.5*ro*A*cL*(vel(i-1)^2))/m;
-    axMaxMotors = - ax_br_scale_factor*((1/vel(i-1))*(P_br*1000*eta/m) - 0.5*(ro*A/m)*(cD*vel(i-1)^2));
-    ax = - max(max(axMaxGGV, axMaxMotors),axMaxController);
-
-    vel(j-1) = min(vel(j-1), sqrt(vel(j)^2 + 2*ax*ds(j-1)));
+    ax = ax_brake_limit(k(j),vel(j));
+    vel(j-1) = min(sqrt(vel(j)^2 + 2*ax*ds(j-1)), vel(j-1));
 end
+
 
 % Compute acceleration along trajectory: forward difference of kinetic energy -> a = (v^2_next - v^2)/ (2*ds)
 acc = zeros(N,1);
