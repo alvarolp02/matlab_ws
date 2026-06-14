@@ -43,28 +43,28 @@ vMax = 25.0;
 
 % Subfunction: compute forward-acceleration limit
 function ax = ax_throttle_limit(k,v)
-    ay = abs(k) * v^2;
+    ay = k * v^2;
     ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(v^2) + 0.038*cL*v + 0.958*muY*g;
     axMaxGGV = 0;
     if abs(ay) < ayMax
         axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL - cD)*1.51*(v^2);
         axMaxGGV = axMax * sqrt(1 - (ay/ayMax)^2);
     end
-    axMaxController = maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)) / m;
+    axMaxController = maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)/m);
     axMaxMotors = ax_th_scale_factor * ((1/v) * (P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*v^2));
     ax = min(min(axMaxGGV, axMaxMotors), axMaxController);
 end
 
 % Subfunction: compute backwards-acceleration limit
 function ax = ax_brake_limit(k,v)
-    ay = abs(k) * v^2;
+    ay = k * v^2;
     ayMax = 0.54728*(1/2)*cL*ro*A*(1/m)*muY*(v^2) + 0.038*cL*v + 0.958*muY*g;
     axMaxGGV = 0;
     if abs(ay) < ayMax
         axMax = 1.05*muX*g + 0.5*(1/m)*ro*A*(muX*cL - cD)*1.51*(v^2);
         axMaxGGV = - axMax * sqrt(1 - (ay/ayMax)^2);
     end
-    axMaxController = - maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)) / m;
+    axMaxController = - maxAccFactorController * (g + 0.5*ro*A*cL*(v^2)/m);
     axMaxMotors = - ax_th_scale_factor * ((1/v) * (P_thr*1000*eta/m) - 0.5*(ro*A/m)*(cD*v^2));
     ax = - max(max(axMaxGGV, axMaxMotors), axMaxController);
 end

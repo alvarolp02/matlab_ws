@@ -2,7 +2,7 @@ function [smoothedPath] = splineInterpolation(path, resolution)
 
 
 d = sqrt(sum(diff(path).^2, 2));
-t = [0; cumsum(d)];
+t = [0; cumsum(d,1)];
 
 N = floor(t(end)/resolution);
 tq = linspace(0, t(end), N);
