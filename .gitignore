@@ -42,3 +42,7 @@ codegen/
 resources/ 
 *.prj
 matlab_ws.prj
+
+bags/
+
+matlab_msg_gen*/
