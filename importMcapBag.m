@@ -7,7 +7,7 @@ customMsgFolder = 'C:/Users/alple/Documents/matlab_ws/custom_msgs';   % contains
 ros2genmsg(customMsgFolder)
 
 %% Open bag
-bag = ros2bagreader('bags/trackdrive_2026-06-06_19-03-12_compressed.mcap');
+bag = ros2bagreader('bags/trackdrive_2026-06-06_19-27-14_compressed.mcap');
 
 %% Select and extract all desired topics
 % topicNames = bag.AvailableTopics.Row;
@@ -20,6 +20,7 @@ allTimes = sel.MessageList.Time;
 allTopics = sel.MessageList.Topic;
 
 % Split by topic and populate struct
+t0 = allTimes(1);
 data = struct();
 for i = 1:numel(topicNames)
     topicName = topicNames{i};
@@ -38,7 +39,7 @@ for i = 1:numel(topicNames)
 
     if nMsgs > 0
         data.(fieldName).msgs = allMsgs(idx);
-        data.(fieldName).timestamps = double(allTimes(idx)) - double(allTimes(find(idx, 1)));
+        data.(fieldName).timestamps = double(allTimes(idx)) - t0;
     end
 
     fprintf('Loaded: %s (%d messages)\n', topicName, nMsgs);
@@ -48,6 +49,7 @@ end
 x =  cellfun(@(m) m.x, data.slam_vehicle_state.msgs);
 y =  cellfun(@(m) m.y, data.slam_vehicle_state.msgs);
 vx = cellfun(@(m) m.vx, data.slam_vehicle_state.msgs);
+axis equal
 
 plot3(x,y,vx)
 
@@ -131,35 +133,125 @@ w_fl = cellfun(@(m) m.front_left,  data.sensing_wheel_encoder.msgs);
 w_fr = cellfun(@(m) m.front_right,  data.sensing_wheel_encoder.msgs);
 w_rl = cellfun(@(m) m.rear_left,  data.sensing_wheel_encoder.msgs);
 w_rr = cellfun(@(m) m.rear_right,  data.sensing_wheel_encoder.msgs);
-w_fl = sync(t_w, w_fl);
-w_fr = sync(t_w, w_fr);
-w_rl = sync(t_w, w_rl);
-w_rr = sync(t_w, w_rr);
+w_fl = sync(t_w, w_fl)*2*pi/60; % rpm to rad/s
+w_fr = sync(t_w, w_fr)*2*pi/60; % rpm to rad/s
+w_rl = sync(t_w, w_rl)*2*pi/60; % rpm to rad/s
+w_rr = sync(t_w, w_rr)*2*pi/60; % rpm to rad/s
 
 % All variables now have the same size as vehicle_state
 fprintf('All signals synchronized: %d samples\n', numel(t_ref));
 
 %% Tire model
 
+% Params
 tw = 1.22; % TrackWidth
 wb = 1.53; % Wheelbase
 cogRatioFront = 0.441;
-lf = wb*cogRatioFront; % Dist from cog to front axle
+lf = wb*(1-cogRatioFront); % Dist from cog to front axle
+lr = wb - lf; % Dist from cog to rear axle
 Rw = 0.20048; % Wheel radius
+Gr = 12.009; % Gear ratio
+Iw = 0.580; % Moment of inertia of wheels respect to the axle
+m = 173.7; % Mass
+Iz = 125.39603; % Rotational Inertia around z axis
+cl = 5.0;
+cd = 1.9;
+A = 1;
+ro = 1.2;
 
-% Choose front left tire
-lyi = tw/2;
-lxi = lf;
-wi = w_fl;
+% Tire parameters per wheel
+% [name, lx_sign, ly_sign, is_front, Fy_col]
+% lyi = +tw/2 (left) or -tw/2 (right)
+% lxi = +lf (front) or -lr (rear)
+wheels = {
+    %label      lxi    lyi   is_front  Fy_col wheel_encoder torque Fz_col
+    'FL',        lf,   tw/2,   true,     1,      w_fl,   torque_fl,  1;
+    'FR',        lf,  -tw/2,   true,     2,      w_fr,   torque_fr,  2;
+    'RL',       -lr,   tw/2,   false,    3,      w_rl,   torque_rl,  3;
+    'RR',       -lr,  -tw/2,   false,    4,      w_rr,   torque_rr,  4;
+    };
 
-% Speed in the center of the wheel
-vxi = vx - r.*lyi;
-vyi = vy + r.*lxi;
+% Precompute shared signals
+v_abs = sqrt(vx.^2 + vy.^2);
+FL_aero = 0.5*m*A*cl*ro*(v_abs.^2);
+FD_aero = 0.5*m*A*cd*ro*(v_abs.^2);
+Fz_all  = wheel_loads(imu_ax, imu_ay, FL_aero, FD_aero);  % Nx4
 
-% Longitudinal speed on the wheel (front wheels)
-vx_wheel_i = vxi.*cos(steer) + vyi.*sin(steer); % Assuming steering_angle = steer of the individual wheel
-vy_wheel_i = -vxi.*sin(steer) + vyi.*cos(steer);
-%vx_wheel_i = vxi , vy_wheel_i = vyi % (rear wheels)
+r_p  = gradient(r);
+vy_p = gradient(vy);
+Fyf  = (m.*(vy_p + vx.*r)*lr + Iz.*r_p) / (lf + lr);
+Fyr  = (m.*(vy_p + vx.*r)*lf - Iz.*r_p) / (lf + lr);
+Fy_per_wheel = [Fyf/2, Fyf/2, Fyr/2, Fyr/2];  % FL FR RL RR
 
-% Slip Ratio calculation
-ki = (wi.*Rw - vx_wheel_i)./max(abs(wi.*Rw), abs(vx_wheel_i));
+% Loop over wheels
+figure; tiledlayout(2,2);
+ax_kFx = gobjects(4,1);
+for i = 1:size(wheels,1)
+    ax_kFx(i) = nexttile;
+end
+
+figure; tiledlayout(2,2);
+ax_aFy = gobjects(4,1);
+for i = 1:size(wheels,1)
+    ax_aFy(i) = nexttile;
+end
+
+for i = 1:size(wheels, 1)
+    label    = wheels{i,1};
+    lxi      = wheels{i,2};
+    lyi      = wheels{i,3};
+    is_front = wheels{i,4};
+    fy_col   = wheels{i,5};
+    wi       = wheels{i,6};
+    Ti       = wheels{i,7};
+    fz_col   = wheels{i,8};
+
+    % Speed at wheel center
+    vxi = vx - r.*lyi;
+    vyi = vy + r.*lxi;
+
+    % Rotate to wheel frame
+    if is_front
+        vx_wheel_i =  vxi.*cos(steer) + vyi.*sin(steer);
+        vy_wheel_i = -vxi.*sin(steer) + vyi.*cos(steer);
+    else
+        vx_wheel_i = vxi;
+        vy_wheel_i = vyi;
+    end
+
+    % Regularization
+    wi         = wi         + 1e-9;
+    vx_wheel_i = vx_wheel_i + 1e-9;
+
+    % Slip ratio
+    k_i = (wi.*Rw./Gr - vx_wheel_i) ./ max(abs(wi.*Rw./Gr), abs(vx_wheel_i));
+
+    % Slip angle
+    a_i = -atan(vy_wheel_i ./ vx_wheel_i);
+
+    % Longitudinal force
+    wi_p = gradient(wi);
+    Fx_i = (Ti - Iw.*wi_p) ./ Rw;
+
+    % Lateral force
+    Fy_i = Fy_per_wheel(:, fy_col);
+
+    % Wheel load
+    Fz_i = Fz_all(:, fz_col);
+
+    % --- Fx vs slip ratio ---
+    axes(ax_kFx(i));
+    scatter(k_i, Fx_i, 4, '.'); grid on;
+    xlabel('Slip Ratio \kappa'); ylabel('F_x [N]');
+    title(sprintf('Longitudinal - %s', label));
+
+    % --- Fy vs slip angle ---
+    axes(ax_aFy(i));
+    scatter(rad2deg(a_i), Fy_i, 4, '.'); grid on;
+    xlabel('Slip Angle [deg]'); ylabel('F_y [N]');
+    title(sprintf('Lateral - %s', label));
+end
+
+% Add figure titles
+figure(1); sgtitle('Longitudinal Tire Behaviour');
+figure(2); sgtitle('Lateral Tire Behaviour');
