@@ -176,12 +176,19 @@ v_abs = sqrt(vx.^2 + vy.^2);
 FL_aero = 0.5*m*A*cl*ro*(v_abs.^2);
 FD_aero = 0.5*m*A*cd*ro*(v_abs.^2);
 Fz_all  = wheel_loads(imu_ax, imu_ay, FL_aero, FD_aero);  % Nx4
+Fz_fl = Fz_all(:,1);
+Fz_fr = Fz_all(:,2);
+Fz_rl = Fz_all(:,3);
+Fz_rr = Fz_all(:,4);
+Fz_f = Fz_fl + Fz_fr;
+Fz_r = Fz_rl + Fz_rr;
 
 r_p  = gradient(r);
 vy_p = gradient(vy);
 Fyf  = (m.*(vy_p + vx.*r)*lr + Iz.*r_p) / (lf + lr);
 Fyr  = (m.*(vy_p + vx.*r)*lf - Iz.*r_p) / (lf + lr);
-Fy_per_wheel = [Fyf/2, Fyf/2, Fyr/2, Fyr/2];  % FL FR RL RR
+% Distribute lateral forces proportional to wheel load distr on each axis
+Fy_per_wheel = [Fyf.*(Fz_fl./Fz_f), Fyf.*(Fz_fr./Fz_f), Fyr.*(Fz_rl./Fz_r), Fyr.*(Fz_rr./Fz_r)];
 
 % Loop over wheels
 figure; tiledlayout(2,2);
@@ -255,3 +262,4 @@ end
 % Add figure titles
 figure(1); sgtitle('Longitudinal Tire Behaviour');
 figure(2); sgtitle('Lateral Tire Behaviour');
+
