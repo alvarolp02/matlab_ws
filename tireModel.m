@@ -22,18 +22,19 @@ ro = 1.2;
 % [name, lx_sign, ly_sign, is_front, Fy_col]
 % lyi = +tw/2 (left) or -tw/2 (right)
 % lxi = +lf (front) or -lr (rear)
+[steerFL,steerFR] = calculate_wheel_angles_from_steering_wheel_angle(steer);
 wheels = {
     %label      lxi    lyi   is_front  Fy_col wheel_encoder torque Fz_col
-    'FL',        lf,   tw/2,   true,     1,      wenc_fl,   torque_fl,  1;
-    'FR',        lf,  -tw/2,   true,     2,      wenc_fr,   torque_fr,  2;
-    'RL',       -lr,   tw/2,   false,    3,      wenc_rl,   torque_rl,  3;
-    'RR',       -lr,  -tw/2,   false,    4,      wenc_rr,   torque_rr,  4;
+    'FL',        lf,   tw/2,   true,     1,      wenc_fl,   torque_fl,  1, steerFL;
+    'FR',        lf,  -tw/2,   true,     2,      wenc_fr,   torque_fr,  2, steerFR;
+    'RL',       -lr,   tw/2,   false,    3,      wenc_rl,   torque_rl,  3, t_ref*0;
+    'RR',       -lr,  -tw/2,   false,    4,      wenc_rr,   torque_rr,  4, t_ref*0;
     };
 
 % Precompute shared signals
 v_abs = sqrt(vx.^2 + vy.^2);
-FL_aero = 0.5*m*A*cl*ro*(v_abs.^2);
-FD_aero = 0.5*m*A*cd*ro*(v_abs.^2);
+FL_aero = 0.5*A*cl*ro*(v_abs.^2);
+FD_aero = 0.5*A*cd*ro*(v_abs.^2);
 Fz_all  = wheel_loads(imu_ax, imu_ay, FL_aero, FD_aero);  % Nx4
 Fz_fl = Fz_all(:,1);
 Fz_fr = Fz_all(:,2);
@@ -62,6 +63,7 @@ for i = 1:size(wheels,1)
 end
 
 SA = zeros(length(steer),4);
+SR = zeros(length(steer),4);
 
 for i = 1:size(wheels, 1)
     label    = wheels{i,1};
@@ -74,17 +76,8 @@ for i = 1:size(wheels, 1)
     fz_col   = wheels{i,8};
 
     % Speed at wheel center
-    vxi = vx - r.*lyi;
-    vyi = vy + r.*lxi;
-
-    % Rotate to wheel frame
-    if is_front
-        vx_wheel_i =  vxi.*cos(steer) + vyi.*sin(steer);
-        vy_wheel_i = -vxi.*sin(steer) + vyi.*cos(steer);
-    else
-        vx_wheel_i = vxi;
-        vy_wheel_i = vyi;
-    end
+    vx_wheel_i = vx - r.*lyi;
+    vy_wheel_i = vy + r.*lxi;
 
     % Regularization
     wi         = wi         + 1e-9;
@@ -92,9 +85,10 @@ for i = 1:size(wheels, 1)
 
     % Slip ratio
     k_i = (wi.*Rw - vx_wheel_i) ./ max(abs(wi.*Rw), abs(vx_wheel_i));
+    SR(:,i) = k_i;
 
     % Slip angle
-    a_i = -atan(vy_wheel_i ./ vx_wheel_i);
+    a_i = atan(vy_wheel_i ./ vx_wheel_i)-wheels{i,9};
     SA(:,i) = a_i;
 
     % Longitudinal force

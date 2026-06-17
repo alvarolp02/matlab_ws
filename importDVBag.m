@@ -7,7 +7,7 @@ customMsgFolder = 'custom_msgs';   % contains interfaces/msg and shared_interfac
 ros2genmsg(customMsgFolder)
 
 %% Open bag
-bag = ros2bagreader('bags/trackdrive_2026-06-06_19-27-14_compressed.mcap');
+bag = ros2bagreader('bags/trackdrive_2026-06-06_19-03-12_compressed.mcap');
 
 %% Select and extract all desired topics
 % topicNames = bag.AvailableTopics.Row;
@@ -61,22 +61,35 @@ t_ref = data.slam_vehicle_state.timestamps;
 sync = @(t, v) interp1(t, v, t_ref, 'linear', 'extrap');
 
 % slam/vehicle_state (reference, no interpolation needed)
-vx      = cellfun(@(m) m.vx,  data.slam_vehicle_state.msgs);
-vy      = cellfun(@(m) m.vy,  data.slam_vehicle_state.msgs);
+% vx      = cellfun(@(m) m.vx,  data.slam_vehicle_state.msgs);
+% vy      = cellfun(@(m) m.vy,  data.slam_vehicle_state.msgs);
 r       = cellfun(@(m) m.r,   data.slam_vehicle_state.msgs);
 x       = cellfun(@(m) m.x,   data.slam_vehicle_state.msgs);
 y       = cellfun(@(m) m.y,   data.slam_vehicle_state.msgs);
 yaw     = cellfun(@(m) m.yaw, data.slam_vehicle_state.msgs);
+
+
+t_gss = data.sensing_gss.timestamps;
+vx = cellfun(@(m) m.v_x, data.sensing_gss.msgs);
+vy = cellfun(@(m) m.v_y, data.sensing_gss.msgs);
+vx = sync(t_gss,vx);
+vy = sync(t_gss,vy);
 delta = -0.06;
 vxR = vx*cos(delta)-vy*sin(delta);
 vyR = vx*sin(delta)+vy*cos(delta);
 vx = vxR;
 vy = vyR;
 
+vy = vy - (lf+0.127)*r; % ggs 
+
 % sensing/steering_angle  (std_msgs/Float64 → .data)
 t_steer = data.sensing_steering_angle.timestamps;
 steer = cellfun(@(m) m.data, data.sensing_steering_angle.msgs);
 steer   = sync(t_steer, steer);
+
+t_steer = data.controller_steering_request.timestamps;
+steerC = cellfun(@(m) m.data, data.controller_steering_request.msgs);
+steerC   = sync(t_steer, steerC);
 
 % sensing/imu  (sensor_msgs/Imu)
 t_imu = data.sensing_imu.timestamps;
