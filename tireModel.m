@@ -42,10 +42,9 @@ Fz_rr = Fz_all(:,4);
 Fz_f = Fz_fl + Fz_fr;
 Fz_r = Fz_rl + Fz_rr;
 
-r_p  = gradient(r);
-vy_p = gradient(vy);
-Fyf  = (m.*(vy_p + vx.*r)*lr + Iz.*r_p) / (lf + lr);
-Fyr  = (m.*(vy_p + vx.*r)*lf - Iz.*r_p) / (lf + lr);
+r_p  = gradient(movmean(r,10),movmean(t_ref,100));
+Fyf  = (m.*(imu_ay)*lr + Iz.*r_p) / (lf + lr);
+Fyr  = (m.*(imu_ay)*lf - Iz.*r_p) / (lf + lr);
 % Distribute lateral forces proportional to wheel load distr on each axis
 Fy_per_wheel = [Fyf.*(Fz_fl./Fz_f), Fyf.*(Fz_fr./Fz_f), Fyr.*(Fz_rl./Fz_r), Fyr.*(Fz_rr./Fz_r)];
 
@@ -62,14 +61,16 @@ for i = 1:size(wheels,1)
     ax_aFy(i) = nexttile;
 end
 
+SA = zeros(length(steer),4);
+
 for i = 1:size(wheels, 1)
     label    = wheels{i,1};
     lxi      = wheels{i,2};
     lyi      = wheels{i,3};
     is_front = wheels{i,4};
     fy_col   = wheels{i,5};
-    wi       = wheels{i,6};
-    Ti       = wheels{i,7};
+    wi       = wheels{i,6}/Gr; % at Wheel
+    Ti       = wheels{i,7}*Gr; % at Wheel
     fz_col   = wheels{i,8};
 
     % Speed at wheel center
@@ -90,13 +91,14 @@ for i = 1:size(wheels, 1)
     vx_wheel_i = vx_wheel_i + 1e-9;
 
     % Slip ratio
-    k_i = (wi.*Rw./Gr - vx_wheel_i) ./ max(abs(wi.*Rw./Gr), abs(vx_wheel_i));
+    k_i = (wi.*Rw - vx_wheel_i) ./ max(abs(wi.*Rw), abs(vx_wheel_i));
 
     % Slip angle
     a_i = -atan(vy_wheel_i ./ vx_wheel_i);
+    SA(:,i) = a_i;
 
     % Longitudinal force
-    wi_p = gradient(wi);
+    wi_p = gradient(movmean(wi,10),movmean(t_ref,100));
     Fx_i = (Ti - Iw.*wi_p) ./ Rw;
 
     % Lateral force

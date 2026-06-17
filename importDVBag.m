@@ -67,6 +67,11 @@ r       = cellfun(@(m) m.r,   data.slam_vehicle_state.msgs);
 x       = cellfun(@(m) m.x,   data.slam_vehicle_state.msgs);
 y       = cellfun(@(m) m.y,   data.slam_vehicle_state.msgs);
 yaw     = cellfun(@(m) m.yaw, data.slam_vehicle_state.msgs);
+delta = -0.06;
+vxR = vx*cos(delta)-vy*sin(delta);
+vyR = vx*sin(delta)+vy*cos(delta);
+vx = vxR;
+vy = vyR;
 
 % sensing/steering_angle  (std_msgs/Float64 → .data)
 t_steer = data.sensing_steering_angle.timestamps;
@@ -81,6 +86,11 @@ imu_r = cellfun(@(m) m.angular_velocity.z,    data.sensing_imu.msgs);
 imu_ax = sync(t_imu, imu_ax);
 imu_ay = sync(t_imu, imu_ay);
 imu_r = sync(t_imu, imu_r);
+delta2 = deg2rad(-3.5);
+axR = imu_ax*cos(delta2)-imu_ay*sin(delta2);
+ayR = imu_ax*sin(delta2)+imu_ay*cos(delta2);
+imu_ax = axR;
+imu_ay = ayR;
 
 % controller/torque_request  (shared_interfaces/WheelData)
 t_torque  = data.controller_torque_request.timestamps;
